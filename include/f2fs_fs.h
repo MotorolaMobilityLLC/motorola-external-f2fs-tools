@@ -4,9 +4,7 @@
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Dual licensed under the GPL or LGPL version 2 licenses.
  */
 #ifndef __F2FS_FS_H__
 #define __F2FS_FS_H__
@@ -14,12 +12,19 @@
 #include <inttypes.h>
 #include <linux/types.h>
 #include <sys/types.h>
-#include <endian.h>
-#include <byteswap.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+typedef u_int64_t	u64;
+typedef u_int32_t	u32;
+typedef u_int16_t	u16;
+typedef u_int8_t	u8;
+typedef u32		block_t;
+typedef u32		nid_t;
+typedef u8		bool;
+typedef unsigned long	pgoff_t;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define le16_to_cpu(x)	((__u16)(x))
@@ -36,6 +41,15 @@
 #define cpu_to_le32(x)	bswap_32(x)
 #define cpu_to_le64(x)	bswap_64(x)
 #endif
+
+#define typecheck(type,x) \
+	({	type __dummy; \
+		typeof(x) __dummy2; \
+		(void)(&__dummy == &__dummy2); \
+		1; \
+	 })
+
+#define NULL_SEGNO	((unsigned int)~0)
 
 /*
  * Debugging interfaces
@@ -58,6 +72,12 @@
 			exit(-1);					\
 		}							\
 	} while (0);
+
+#define ERR_MSG(fmt, ...)						\
+	do {								\
+		printf("[%s:%d] " fmt, __func__, __LINE__, ##__VA_ARGS__);	\
+	} while (0);
+
 
 #define MSG(n, fmt, ...)						\
 	do {								\
@@ -96,7 +116,7 @@
 
 #define DISP_utf(ptr, member)						\
 	do {								\
-		printf(#member "\t\t\t\t[%s]\n", ((ptr)->member) );	\
+		printf("%-30s" "\t\t[%s]\n", #member, ((ptr)->member) );	\
 	} while (0);
 
 /* Display to buffer */
@@ -124,6 +144,7 @@
 #define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
+#define CHECKSUM_OFFSET		4092
 
 /* for mkfs */
 #define F2FS_MIN_VOLUME_SIZE	104857600
@@ -132,6 +153,11 @@
 #define	DEFAULT_SECTORS_PER_BLOCK	8
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
+
+enum f2fs_config_func {
+	FSCK,
+	DUMP,
+};
 
 struct f2fs_configuration {
 	u_int32_t sector_size;
@@ -151,6 +177,8 @@ struct f2fs_configuration {
 	char *extension_list;
 	int dbg_lv;
 	int trim;
+	int func;
+	void *private;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -193,6 +221,7 @@ enum {
 #define F2FS_LOG_SECTORS_PER_BLOCK	3	/* 4KB: F2FS_BLKSIZE */
 #define F2FS_BLKSIZE			4096	/* support only 4KB block */
 #define F2FS_MAX_EXTENSION		64	/* # of extension entries */
+#define F2FS_BLK_ALIGN(x)	(((x) + F2FS_BLKSIZE - 1) / F2FS_BLKSIZE)
 
 #define NULL_ADDR		0x0U
 #define NEW_ADDR		-1U
@@ -249,6 +278,7 @@ struct f2fs_super_block {
 	__le16 volume_name[512];	/* volume name */
 	__le32 extension_count;		/* # of extensions below */
 	__u8 extension_list[F2FS_MAX_EXTENSION][8];	/* extension array */
+	__le32 cp_payload;
 } __attribute__((packed));
 
 /*
@@ -314,14 +344,32 @@ struct f2fs_extent {
 } __attribute__((packed));
 
 #define F2FS_NAME_LEN		255
-#define ADDRS_PER_INODE         923	/* Address Pointers in an Inode */
+#define F2FS_INLINE_XATTR_ADDRS	50	/* 200 bytes for inline xattrs */
+#define DEF_ADDRS_PER_INODE	923	/* Address Pointers in an Inode */
+#define ADDRS_PER_INODE(fi)	addrs_per_inode(fi)
 #define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
+
+#define	NODE_DIR1_BLOCK		(DEF_ADDRS_PER_INODE + 1)
+#define	NODE_DIR2_BLOCK		(DEF_ADDRS_PER_INODE + 2)
+#define	NODE_IND1_BLOCK		(DEF_ADDRS_PER_INODE + 3)
+#define	NODE_IND2_BLOCK		(DEF_ADDRS_PER_INODE + 4)
+#define	NODE_DIND_BLOCK		(DEF_ADDRS_PER_INODE + 5)
+
+#define F2FS_INLINE_XATTR	0x01	/* file inline xattr flag */
+#define F2FS_INLINE_DATA	0x02	/* file inline data flag */
+#define MAX_INLINE_DATA		(sizeof(__le32) * (DEF_ADDRS_PER_INODE - \
+						F2FS_INLINE_XATTR_ADDRS - 1))
+
+#define INLINE_DATA_OFFSET	(PAGE_CACHE_SIZE - sizeof(struct node_footer) \
+				- sizeof(__le32)*(DEF_ADDRS_PER_INODE + 5 - 1))
+
+#define DEF_DIR_LEVEL		0
 
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */
 	__u8 i_advise;			/* file hints */
-	__u8 i_reserved;		/* reserved */
+	__u8 i_inline;			/* file inline flags */
 	__le32 i_uid;			/* user ID */
 	__le32 i_gid;			/* group ID */
 	__le32 i_links;			/* links count */
@@ -340,11 +388,11 @@ struct f2fs_inode {
 	__le32 i_pino;			/* parent inode number */
 	__le32 i_namelen;		/* file name length */
 	__u8 i_name[F2FS_NAME_LEN];	/* file name for SPOR */
-	__u8 i_reserved2;		/* for backward compatibility */
+	__u8 i_dir_level;		/* dentry_level for large dir */
 
 	struct f2fs_extent i_ext;	/* caching a largest extent */
 
-	__le32 i_addr[ADDRS_PER_INODE];	/* Pointers to data blocks */
+	__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
 
 	__le32 i_nid[5];		/* direct(2), indirect(2),
 						double_indirect(1) node id */
@@ -409,6 +457,13 @@ struct f2fs_nat_block {
 #define SIT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_sit_entry))
 
 /*
+ * F2FS uses 4 bytes to represent block address. As a result, supported size of
+ * disk is 16 TB and it equals to 16 * 1024 * 1024 / 2 segments.
+ */
+#define F2FS_MAX_SEGMENT       ((16 * 1024 * 1024) / 2)
+#define MAX_SIT_BITMAP_SIZE    ((F2FS_MAX_SEGMENT / SIT_ENTRY_PER_BLOCK) / 8)
+
+/*
  * Note that f2fs_sit_entry->vblocks has the following bit-field information.
  * [15:10] : allocation type such as CURSEG_XXXX_TYPE
  * [9:0] : valid block count
@@ -449,7 +504,7 @@ struct f2fs_sit_block {
 #define ENTRIES_IN_SUM		512
 #define	SUMMARY_SIZE		(7)	/* sizeof(struct summary) */
 #define	SUM_FOOTER_SIZE		(5)	/* sizeof(struct summary_footer) */
-#define SUM_ENTRY_SIZE		(SUMMARY_SIZE * ENTRIES_IN_SUM)
+#define SUM_ENTRIES_SIZE	(SUMMARY_SIZE * ENTRIES_IN_SUM)
 
 /* a summary entry for a 4KB-sized block in a segment */
 struct f2fs_summary {
@@ -473,7 +528,7 @@ struct summary_footer {
 } __attribute__((packed));
 
 #define SUM_JOURNAL_SIZE	(F2FS_BLKSIZE - SUM_FOOTER_SIZE -\
-				SUM_ENTRY_SIZE)
+				SUM_ENTRIES_SIZE)
 #define NAT_JOURNAL_ENTRIES	((SUM_JOURNAL_SIZE - 2) /\
 				sizeof(struct nat_journal_entry))
 #define NAT_JOURNAL_RESERVED	((SUM_JOURNAL_SIZE - 2) %\
@@ -573,7 +628,7 @@ struct f2fs_dentry_block {
 } __attribute__((packed));
 
 /* file types used in inode_info->flags */
-enum {
+enum FILE_TYPE {
 	F2FS_FT_UNKNOWN,
 	F2FS_FT_REG_FILE,
 	F2FS_FT_DIR,
@@ -582,26 +637,48 @@ enum {
 	F2FS_FT_FIFO,
 	F2FS_FT_SOCK,
 	F2FS_FT_SYMLINK,
-	F2FS_FT_MAX
+	F2FS_FT_MAX,
+	/* added for fsck */
+	F2FS_FT_ORPHAN,
 };
 
-void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
-int log_base_2(u_int32_t);
+/* from f2fs/segment.h */
+enum {
+	LFS = 0,
+	SSR
+};
 
-int f2fs_test_bit(unsigned int, const char *);
-int f2fs_set_bit(unsigned int, unsigned char *);
-int f2fs_clear_bit(unsigned int, char *);
+extern void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
+extern int log_base_2(u_int32_t);
+extern unsigned int addrs_per_inode(struct f2fs_inode *);
 
-u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
+extern int get_bits_in_byte(unsigned char n);
+extern int set_bit(unsigned int nr,void * addr);
+extern int clear_bit(unsigned int nr, void * addr);
+extern int test_bit(unsigned int nr, const void * addr);
+extern int f2fs_test_bit(unsigned int, const char *);
+extern int f2fs_set_bit(unsigned int, char *);
+extern int f2fs_clear_bit(unsigned int, char *);
+extern unsigned long find_next_bit(const unsigned long *, unsigned long, unsigned long);
 
-void f2fs_init_configuration(struct f2fs_configuration *);
-int f2fs_dev_is_mounted(struct f2fs_configuration *);
-int f2fs_get_device_info(struct f2fs_configuration *);
+extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
+extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
 
-int dev_read(void *, __u64, size_t);
-int dev_write(void *, __u64, size_t);
+extern void f2fs_init_configuration(struct f2fs_configuration *);
+extern int f2fs_dev_is_umounted(struct f2fs_configuration *);
+extern int f2fs_get_device_info(struct f2fs_configuration *);
+extern void f2fs_finalize_device(struct f2fs_configuration *);
 
-int dev_read_block(void *, __u64);
-int dev_read_blocks(void *, __u64, __u32 );
+extern int dev_read(void *, __u64, size_t);
+extern int dev_write(void *, __u64, size_t);
+/* All bytes in the buffer must be 0 use dev_fill(). */
+extern int dev_fill(void *, __u64, size_t);
+
+extern int dev_read_block(void *, __u64);
+extern int dev_read_blocks(void *, __u64, __u32 );
+
+f2fs_hash_t f2fs_dentry_hash(const char *, int);
+
+extern struct f2fs_configuration config;
 
 #endif	/*__F2FS_FS_H */

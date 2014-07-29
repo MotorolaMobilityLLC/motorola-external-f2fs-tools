@@ -56,7 +56,7 @@ AC_PATH_PROG([LDCONFIG], [ldconfig],
 PKG_CHECK_MODULES([libuuid], [uuid])
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h mntent.h stdlib.h string.h \
+AC_CHECK_HEADERS([linux/fs.h fcntl.h mntent.h stdlib.h string.h \
 		sys/ioctl.h sys/mount.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -82,6 +82,8 @@ AC_CONFIG_FILES([
 	man/Makefile
 	lib/Makefile
 	mkfs/Makefile
+	fsck/Makefile
+	tools/Makefile
 ])
 
 AC_OUTPUT
