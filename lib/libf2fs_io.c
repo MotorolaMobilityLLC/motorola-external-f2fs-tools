@@ -21,7 +21,7 @@
 #include <sys/ioctl.h>
 #include <linux/hdreg.h>
 
-#include <f2fs_fs.h>
+#include "include/f2fs_fs.h"
 
 struct f2fs_configuration config;
 

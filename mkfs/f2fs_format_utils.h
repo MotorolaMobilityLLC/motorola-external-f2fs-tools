@@ -8,7 +8,7 @@
  */
 #define _LARGEFILE64_SOURCE
 
-#include "f2fs_fs.h"
+#include "include/f2fs_fs.h"
 
 extern struct f2fs_configuration config;
 

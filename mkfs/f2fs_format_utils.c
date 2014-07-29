@@ -13,11 +13,13 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include "f2fs_fs.h"
+#include "include/f2fs_fs.h"
 
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>
 #endif
+
+#define BLKDISCARD _IO(0x12,119)
 
 int f2fs_trim_device()
 {

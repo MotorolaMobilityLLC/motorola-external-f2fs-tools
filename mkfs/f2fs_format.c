@@ -16,13 +16,47 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <time.h>
-#include <uuid/uuid.h>
 
-#include "f2fs_fs.h"
+#include "include/f2fs_fs.h"
 #include "f2fs_format_utils.h"
+
+#define F2FS_MAJOR_VERSION 1
+#define F2FS_MINOR_VERSION 3
 
 extern struct f2fs_configuration config;
 struct f2fs_super_block super_block;
+
+/*
+   This generates a version 4 universally unique identifier (UUID).
+   The format is: xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx
+   where each x is 4 bits populated by /dev/urandom.
+   The algorithm is derived from Theodore T'so's original e2fsprogs source.
+
+   16 bytes will be written to the passed pointer, so allocate
+   at least that much space before calling uuid_generate.
+ */
+#define RANDOM "/dev/urandom"
+void uuid_generate(unsigned char *uuid)
+{
+	int fd;
+
+	fd = open(RANDOM, O_RDONLY);
+	if( -1 == fd) {
+		perror("Error while opening " RANDOM);
+		return;
+	}
+
+	if (16 != read(fd, uuid, 16))
+		perror("Error while reading from " RANDOM);
+
+	uuid[6] &= 0x0F;
+	uuid[6] |= 0x40;
+
+	uuid[8] &= 0x3F;
+	uuid[8] |= 0x80;
+
+	close(fd);
+}
 
 const char *media_ext_lists[] = {
 	"jpg",
