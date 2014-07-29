@@ -120,7 +120,7 @@
 	} while (0);
 
 /* these are defined in kernel */
-// #define PAGE_SIZE		4096
+#define PAGE_SIZE		4096
 #define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
@@ -145,7 +145,6 @@ struct f2fs_configuration {
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
 	char *vol_label;
-	u_int32_t bytes_reserved;
 	int heap;
 	int32_t fd;
 	char *device_name;
