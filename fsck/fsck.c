@@ -27,11 +27,13 @@ static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
 						GET_SEGNO(sbi, blk), se->type,
 						CURSEG_WARM_DATA);
 				se->type = CURSEG_WARM_DATA;
+				config.bug_on = 1;
 			}
 		} else {
 			FIX_MSG("Wrong segment type [0x%x] %x -> %x\n",
 				GET_SEGNO(sbi, blk), se->type, type);
 			se->type = type;
+			config.bug_on = 1;
 		}
 	}
 	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->main_area_bitmap);
