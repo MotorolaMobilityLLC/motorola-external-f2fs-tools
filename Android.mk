@@ -114,4 +114,53 @@ LOCAL_CFLAGS := $(version_CFLAGS)
 LOCAL_HOST_SHARED_LIBRARIES :=  libext2_uuid_host
 include $(BUILD_HOST_EXECUTABLE)
 
+#----------------------------------------------------------
+include $(CLEAR_VARS)
+# The LOCAL_MODULE name is referenced by the code. Don't change it.
+
+LOCAL_CFLAGS := -O3 -DNO_THREADS -Dunix -DHAVE_ANSIC_C -DHAVE_PREAD -DNAME='"linux-arm"' -Dlinux
+#LOCAL_LDLIBS += -lrt
+
+LOCAL_SRC_FILES:= \
+        benchmarks/iozone3_427/iozone.c \
+        benchmarks/iozone3_427/libbif.c
+
+LOCAL_MODULE := mot.iozone
+include $(BUILD_EXECUTABLE)
+
+#----------------------------------------------------------
+include $(CLEAR_VARS)
+# The LOCAL_MODULE name is referenced by the code. Don't change it.
+
+LOCAL_SRC_FILES := \
+        benchmarks/mobibench/mobibench.c
+
+LOCAL_MODULE := mot.mobibench
+LOCAL_C_INCLUDES += external/sqlite/dist
+LOCAL_SHARED_LIBRARIES := libsqlite \
+        libicuuc \
+        libicui18n \
+        libutils
+
+ifneq ($(TARGET_ARCH),arm)
+LOCAL_LDLIBS += -lpthread -ldl
+endif
+include $(BUILD_EXECUTABLE)
+
+#----------------------------------------------------------
+include $(CLEAR_VARS)
+# The LOCAL_MODULE name is referenced by the code. Don't change it.
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_SRC_FILES:= \
+        benchmarks/mmc-utils/mmc.c \
+        benchmarks/mmc-utils/mmc_cmds.c \
+        benchmarks/mmc-utils/3rdparty/hmac_sha/sha2.c \
+        benchmarks/mmc-utils/3rdparty/hmac_sha/hmac_sha2.c
+LOCAL_MODULE := mot.mmc
+LOCAL_SHARED_LIBRARIES := libcutils libc
+LOCAL_C_INCLUDES+= $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+include $(BUILD_EXECUTABLE)
+
 endif
