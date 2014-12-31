@@ -27,6 +27,10 @@
 #include <linux/falloc.h>
 #endif
 
+#ifndef BLKDISCARD
+#define BLKDISCARD	_IO(0x12, 119)
+#endif
+
 int f2fs_trim_device()
 {
 	unsigned long long range[2];
