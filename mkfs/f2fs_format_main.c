@@ -33,6 +33,7 @@ static void mkfs_usage()
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -o overprovision ratio [default:5]\n");
+	MSG(0, "  -O set feature\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
@@ -42,9 +43,40 @@ static void mkfs_usage()
 	exit(1);
 }
 
+static void f2fs_show_info()
+{
+	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s) "
+		"[modified by Motorola for ARM and to reserve space]\n\n",
+				F2FS_TOOLS_VERSION,
+				F2FS_TOOLS_DATE);
+	if (config.heap == 0)
+		MSG(0, "Info: Disable heap-based policy\n");
+
+	MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
+	if (config.extension_list)
+		MSG(0, "Info: Add new extension list\n");
+
+	if (config.vol_label)
+		MSG(0, "Info: Label = %s\n", config.vol_label);
+	MSG(0, "Info: Overprovision ratio = %u%%\n", config.overprovision);
+	MSG(0, "Info: Segments per section = %d\n", config.segs_per_sec);
+	MSG(0, "Info: Sections per zone = %d\n", config.secs_per_zone);
+	MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
+}
+
+static void parse_feature(char *features)
+{
+	if (!strcmp(features, "encrypt")) {
+		config.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+	} else {
+		MSG(0, "Error: Wrong features\n");
+		mkfs_usage();
+	}
+}
+
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "a:d:e:l:o:s:z:t:r:";
+	static const char *option_string = "a:d:e:l:o:O:s:z:t:r:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -75,6 +107,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 			config.overprovision = atoi(optarg);
 			MSG(0, "Info: Overprovision ratio = %u%%\n",
 								atoi(optarg));
+			break;
+		case 'O':
+			parse_feature(strdup(optarg));
 			break;
 		case 's':
 			config.segs_per_sec = atoi(optarg);
