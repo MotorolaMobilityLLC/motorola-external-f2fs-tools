@@ -68,7 +68,7 @@ LOCAL_FORCE_STATIC_EXECUTABLE := true
 # Directly generating into the recovery/root/sbin gets clobbered
 # when the recovery image is being made.
 # LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
-LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
+#LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
 
 LOCAL_SRC_FILES := \
 	lib/libf2fs_io.c \
