@@ -59,12 +59,17 @@ include $(BUILD_HOST_SHARED_LIBRARY)
 #----------------------------------------------------------
 include $(CLEAR_VARS)
 # The LOCAL_MODULE name is referenced by the code. Don't change it.
-LOCAL_MODULE := mkfs.f2fs
+#LOCAL_MODULE := mkfs.f2fs
+LOCAL_MODULE := make_f2fs
 
 # mkfs.f2fs is used in recovery: must be static.
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 
-LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+# Recovery needs it also, so it must go into root/sbin/.
+# Directly generating into the recovery/root/sbin gets clobbered
+# when the recovery image is being made.
+ LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+#LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
 
 LOCAL_SRC_FILES := \
 	lib/libf2fs_io.c \
@@ -77,7 +82,8 @@ include $(BUILD_EXECUTABLE)
 
 #----------------------------------------------------------
 include $(CLEAR_VARS)
-LOCAL_MODULE := make_f2fs
+LOCAL_MODULE := mkfs.f2fs
+#LOCAL_MODULE := make_f2fs
 
 LOCAL_SRC_FILES := \
 	lib/libf2fs_io.c \
