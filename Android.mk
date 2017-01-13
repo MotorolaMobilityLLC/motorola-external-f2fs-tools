@@ -47,7 +47,7 @@ LOCAL_CFLAGS := $(version_CFLAGS)
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include $(LOCAL_PATH)/mkfs
 LOCAL_STATIC_LIBRARIES := \
      libf2fs_ioutils_host \
-     libext2_uuid-host \
+     libext2_uuid \
      libsparse \
      libz
 # LOCAL_LDLIBS := -ldl
@@ -72,7 +72,7 @@ LOCAL_SRC_FILES := \
 	mkfs/f2fs_format_main.c
 LOCAL_C_INCLUDES := $(common_C_INCLUDES)
 LOCAL_CFLAGS := $(version_CFLAGS)
-LOCAL_STATIC_LIBRARIES := libc libf2fs_fmt libext2_uuid_static
+LOCAL_STATIC_LIBRARIES := libc libf2fs_fmt libext2_uuid
 LOCAL_MODULE_TAGS := optional
 include $(BUILD_EXECUTABLE)
 
@@ -108,7 +108,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := $(common_C_INCLUDES)
 LOCAL_CFLAGS := $(version_CFLAGS)
-LOCAL_HOST_SHARED_LIBRARIES :=  libext2_uuid_host
+LOCAL_HOST_SHARED_LIBRARIES :=  libext2_uuid
 include $(BUILD_HOST_EXECUTABLE)
 
 #----------------------------------------------------------
