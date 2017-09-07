@@ -74,6 +74,7 @@ LOCAL_C_INCLUDES := $(common_C_INCLUDES)
 LOCAL_CFLAGS := $(version_CFLAGS)
 LOCAL_STATIC_LIBRARIES := libc libf2fs_fmt libext2_uuid
 LOCAL_MODULE_TAGS := optional
+LOCAL_PROPRIETARY_MODULE := true
 include $(BUILD_EXECUTABLE)
 
 #----------------------------------------------------------
