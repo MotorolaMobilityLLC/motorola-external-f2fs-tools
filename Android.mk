@@ -4,7 +4,7 @@ LOCAL_PATH:= $(call my-dir)
 ifeq ($(HOST_OS),linux)
 
 # The versions depend on $(LOCAL_PATH)/VERSION
-version_CFLAGS := -DF2FS_MAJOR_VERSION=1 -DF2FS_MINOR_VERSION=4 -DF2FS_TOOLS_VERSION=\"1.4.0\" -DF2FS_TOOLS_DATE=\"2014-10-18\"
+version_CFLAGS := -DWITH_BLKDISCARD -DF2FS_MAJOR_VERSION=1 -DF2FS_MINOR_VERSION=2 -DF2FS_TOOLS_VERSION=\"1.2.0\" -DF2FS_TOOLS_DATE=\"2013-10-25\"
 
 # external/e2fsprogs/lib is needed for uuid/uuid.h
 common_C_INCLUDES := $(LOCAL_PATH)/include external/e2fsprogs/lib/
@@ -61,7 +61,11 @@ LOCAL_MODULE := mkfs.f2fs
 # mkfs.f2fs is used in recovery: must be static.
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 
-LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+# Recovery needs it also, so it must go into root/sbin/.
+# Directly generating into the recovery/root/sbin gets clobbered
+# when the recovery image is being made.
+# LOCAL_MODULE_PATH := $(TARGET_RECOVERY_ROOT_OUT)/sbin
+#LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
 
 LOCAL_SRC_FILES := \
 	lib/libf2fs_io.c \
@@ -69,21 +73,6 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := $(common_C_INCLUDES)
 LOCAL_CFLAGS := $(version_CFLAGS)
 LOCAL_STATIC_LIBRARIES := libc libf2fs_fmt libext2_uuid
-LOCAL_MODULE_TAGS := optional
-include $(BUILD_EXECUTABLE)
-
-#----------------------------------------------------------
-include $(CLEAR_VARS)
-LOCAL_MODULE := make_f2fs
-
-LOCAL_SRC_FILES := \
-	lib/libf2fs_io.c \
-	mkfs/f2fs_format_main.c
-LOCAL_C_INCLUDES := $(common_C_INCLUDES)
-LOCAL_CFLAGS := $(version_CFLAGS)
-LOCAL_STATIC_LIBRARIES := libf2fs_fmt
-LOCAL_SHARED_LIBRARIES := libext2_uuid
-LOCAL_SYSTEM_SHARED_LIBRARIES := libc
 LOCAL_MODULE_TAGS := optional
 include $(BUILD_EXECUTABLE)
 
