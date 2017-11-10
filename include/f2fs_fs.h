@@ -4,9 +4,10 @@
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Dual licensed under the GPL or LGPL version 2 licenses.
+ *
+ * The byteswap codes are copied from:
+ *   samba_3_master/lib/ccan/endian/endian.h under LGPL 2.1
  */
 #ifndef __F2FS_FS_H__
 #define __F2FS_FS_H__
@@ -14,11 +15,75 @@
 #include <inttypes.h>
 #include <linux/types.h>
 #include <sys/types.h>
-#include <endian.h>
-#include <byteswap.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
+
+typedef u_int64_t	u64;
+typedef u_int32_t	u32;
+typedef u_int16_t	u16;
+typedef u_int8_t	u8;
+typedef u32		block_t;
+typedef u32		nid_t;
+typedef u8		bool;
+typedef unsigned long	pgoff_t;
+
+#if HAVE_BYTESWAP_H
+#include <byteswap.h>
+#else
+/**
+ * bswap_16 - reverse bytes in a uint16_t value.
+ * @val: value whose bytes to swap.
+ *
+ * Example:
+ *	// Output contains "1024 is 4 as two bytes reversed"
+ *	printf("1024 is %u as two bytes reversed\n", bswap_16(1024));
+ */
+static inline uint16_t bswap_16(uint16_t val)
+{
+	return ((val & (uint16_t)0x00ffU) << 8)
+		| ((val & (uint16_t)0xff00U) >> 8);
+}
+
+/**
+ * bswap_32 - reverse bytes in a uint32_t value.
+ * @val: value whose bytes to swap.
+ *
+ * Example:
+ *	// Output contains "1024 is 262144 as four bytes reversed"
+ *	printf("1024 is %u as four bytes reversed\n", bswap_32(1024));
+ */
+static inline uint32_t bswap_32(uint32_t val)
+{
+	return ((val & (uint32_t)0x000000ffUL) << 24)
+		| ((val & (uint32_t)0x0000ff00UL) <<  8)
+		| ((val & (uint32_t)0x00ff0000UL) >>  8)
+		| ((val & (uint32_t)0xff000000UL) >> 24);
+}
+#endif /* !HAVE_BYTESWAP_H */
+
+#if defined HAVE_DECL_BSWAP_64 && !HAVE_DECL_BSWAP_64
+/**
+ * bswap_64 - reverse bytes in a uint64_t value.
+ * @val: value whose bytes to swap.
+ *
+ * Example:
+ *	// Output contains "1024 is 1125899906842624 as eight bytes reversed"
+ *	printf("1024 is %llu as eight bytes reversed\n",
+ *		(unsigned long long)bswap_64(1024));
+ */
+static inline uint64_t bswap_64(uint64_t val)
+{
+	return ((val & (uint64_t)0x00000000000000ffULL) << 56)
+		| ((val & (uint64_t)0x000000000000ff00ULL) << 40)
+		| ((val & (uint64_t)0x0000000000ff0000ULL) << 24)
+		| ((val & (uint64_t)0x00000000ff000000ULL) <<  8)
+		| ((val & (uint64_t)0x000000ff00000000ULL) >>  8)
+		| ((val & (uint64_t)0x0000ff0000000000ULL) >> 24)
+		| ((val & (uint64_t)0x00ff000000000000ULL) >> 40)
+		| ((val & (uint64_t)0xff00000000000000ULL) >> 56);
+}
 #endif
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -37,34 +102,51 @@
 #define cpu_to_le64(x)	bswap_64(x)
 #endif
 
+#define typecheck(type,x) \
+	({	type __dummy; \
+		typeof(x) __dummy2; \
+		(void)(&__dummy == &__dummy2); \
+		1; \
+	 })
+
+#define NULL_SEGNO	((unsigned int)~0)
+
 /*
  * Debugging interfaces
  */
-#define ASSERT_MSG(exp, fmt, ...)					\
+#define FIX_MSG(fmt, ...)						\
 	do {								\
-		if (!(exp)) {						\
-			printf("\nAssertion failed!\n");		\
-			printf("[%s:%4d] " #exp, __func__, __LINE__);	\
-			printf("\n --> "fmt, ##__VA_ARGS__);		\
-			exit(-1);					\
-		}							\
-	} while (0);
+		printf("[FIX] (%s:%4d) ", __func__, __LINE__);		\
+		printf(" --> "fmt"\n", ##__VA_ARGS__);			\
+	} while (0)
+
+#define ASSERT_MSG(fmt, ...)						\
+	do {								\
+		printf("[ASSERT] (%s:%4d) ", __func__, __LINE__);	\
+		printf(" --> "fmt"\n", ##__VA_ARGS__);			\
+		config.bug_on = 1;					\
+	} while (0)
 
 #define ASSERT(exp)							\
 	do {								\
 		if (!(exp)) {						\
-			printf("\nAssertion failed!\n");		\
-			printf("[%s:%4d] " #exp"\n", __func__, __LINE__);\
+			printf("[ASSERT] (%s:%4d) " #exp"\n",		\
+					__func__, __LINE__);		\
 			exit(-1);					\
 		}							\
-	} while (0);
+	} while (0)
+
+#define ERR_MSG(fmt, ...)						\
+	do {								\
+		printf("[%s:%d] " fmt, __func__, __LINE__, ##__VA_ARGS__); \
+	} while (0)
 
 #define MSG(n, fmt, ...)						\
 	do {								\
 		if (config.dbg_lv >= n) {				\
 			printf(fmt, ##__VA_ARGS__);			\
 		}							\
-	} while (0);
+	} while (0)
 
 #define DBG(n, fmt, ...)						\
 	do {								\
@@ -72,58 +154,59 @@
 			printf("[%s:%4d] " fmt,				\
 				__func__, __LINE__, ##__VA_ARGS__);	\
 		}							\
-	} while (0);
+	} while (0)
 
 /* Display on console */
 #define DISP(fmt, ptr, member)				\
 	do {						\
 		printf("%-30s" fmt, #member, ((ptr)->member));	\
-	} while (0);
+	} while (0)
 
 #define DISP_u32(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) <= 4);			\
 		printf("%-30s" "\t\t[0x%8x : %u]\n",		\
-			#member, ((ptr)->member), ((ptr)->member) );	\
-	} while (0);
+			#member, ((ptr)->member), ((ptr)->member));	\
+	} while (0)
 
 #define DISP_u64(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) == 8);			\
 		printf("%-30s" "\t\t[0x%8llx : %llu]\n",		\
-			#member, ((ptr)->member), ((ptr)->member) );	\
-	} while (0);
+			#member, ((ptr)->member), ((ptr)->member));	\
+	} while (0)
 
 #define DISP_utf(ptr, member)						\
 	do {								\
-		printf(#member "\t\t\t\t[%s]\n", ((ptr)->member) );	\
-	} while (0);
+		printf("%-30s" "\t\t[%s]\n", #member, ((ptr)->member)); \
+	} while (0)
 
 /* Display to buffer */
-#define BUF_DISP_u32(buf, data, len, ptr, member)					\
-	do {										\
-		assert(sizeof((ptr)->member) <= 4);					\
-		snprintf(buf, len, #member);						\
-		snprintf(data, len, "0x%x : %u", ((ptr)->member), ((ptr)->member));	\
-	} while (0);
+#define BUF_DISP_u32(buf, data, len, ptr, member)			\
+	do {								\
+		assert(sizeof((ptr)->member) <= 4);			\
+		snprintf(buf, len, #member);				\
+		snprintf(data, len, "0x%x : %u", ((ptr)->member),	\
+						((ptr)->member));	\
+	} while (0)
 
-#define BUF_DISP_u64(buf, data, len, ptr, member)					\
-	do {										\
-		assert(sizeof((ptr)->member) == 8);					\
-		snprintf(buf, len, #member);						\
-		snprintf(data, len, "0x%llx : %llu", ((ptr)->member), ((ptr)->member));	\
-	} while (0);
+#define BUF_DISP_u64(buf, data, len, ptr, member)			\
+	do {								\
+		assert(sizeof((ptr)->member) == 8);			\
+		snprintf(buf, len, #member);				\
+		snprintf(data, len, "0x%llx : %llu", ((ptr)->member),	\
+						((ptr)->member));	\
+	} while (0)
 
-#define BUF_DISP_utf(buf, data, len, ptr, member)				\
-	do {									\
-		snprintf(buf, len, #member);					\
-	} while (0);
+#define BUF_DISP_utf(buf, data, len, ptr, member)			\
+		snprintf(buf, len, #member)
 
 /* these are defined in kernel */
-// #define PAGE_SIZE		4096
+#define PAGE_SIZE		4096
 #define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
+#define CHECKSUM_OFFSET		4092
 
 /* for mkfs */
 #define F2FS_MIN_VOLUME_SIZE	104857600
@@ -133,6 +216,13 @@
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
 
+#define VERSION_LEN	256
+
+enum f2fs_config_func {
+	FSCK,
+	DUMP,
+};
+
 struct f2fs_configuration {
 	u_int32_t sector_size;
 	u_int32_t reserved_segments;
@@ -140,18 +230,27 @@ struct f2fs_configuration {
 	u_int32_t cur_seg[6];
 	u_int32_t segs_per_sec;
 	u_int32_t secs_per_zone;
+	u_int32_t segs_per_zone;
 	u_int32_t start_sector;
 	u_int64_t total_sectors;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
+	__u8 init_version[VERSION_LEN + 1];
+	__u8 sb_version[VERSION_LEN + 1];
+	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
-	u_int32_t bytes_reserved;
 	int heap;
-	int32_t fd;
+	int32_t fd, kd;
+	int32_t dump_fd;
 	char *device_name;
 	char *extension_list;
 	int dbg_lv;
 	int trim;
+	int func;
+	void *private;
+	int fix_on;
+	int bug_on;
+	int auto_fix;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -190,10 +289,11 @@ enum {
  * Copied from include/linux/f2fs_sb.h
  */
 #define F2FS_SUPER_OFFSET		1024	/* byte-size offset */
-#define F2FS_LOG_SECTOR_SIZE		9	/* 9 bits for 512 byte */
-#define F2FS_LOG_SECTORS_PER_BLOCK	3	/* 4KB: F2FS_BLKSIZE */
+#define F2FS_MIN_LOG_SECTOR_SIZE	9	/* 9 bits for 512 bytes */
+#define F2FS_MAX_LOG_SECTOR_SIZE	12	/* 12 bits for 4096 bytes */
 #define F2FS_BLKSIZE			4096	/* support only 4KB block */
 #define F2FS_MAX_EXTENSION		64	/* # of extension entries */
+#define F2FS_BLK_ALIGN(x)	(((x) + F2FS_BLKSIZE - 1) / F2FS_BLKSIZE)
 
 #define NULL_ADDR		0x0U
 #define NEW_ADDR		-1U
@@ -250,11 +350,16 @@ struct f2fs_super_block {
 	__le16 volume_name[512];	/* volume name */
 	__le32 extension_count;		/* # of extensions below */
 	__u8 extension_list[F2FS_MAX_EXTENSION][8];	/* extension array */
+	__le32 cp_payload;
+	__u8 version[VERSION_LEN];	/* the kernel version */
+	__u8 init_version[VERSION_LEN];	/* the initial kernel version */
 } __attribute__((packed));
 
 /*
  * For checkpoint
  */
+#define CP_FASTBOOT_FLAG	0x00000020
+#define CP_FSCK_FLAG		0x00000010
 #define CP_ERROR_FLAG		0x00000008
 #define CP_COMPACT_SUM_FLAG	0x00000004
 #define CP_ORPHAN_PRESENT_FLAG	0x00000002
@@ -315,14 +420,35 @@ struct f2fs_extent {
 } __attribute__((packed));
 
 #define F2FS_NAME_LEN		255
-#define ADDRS_PER_INODE         923	/* Address Pointers in an Inode */
+#define F2FS_INLINE_XATTR_ADDRS	50	/* 200 bytes for inline xattrs */
+#define DEF_ADDRS_PER_INODE	923	/* Address Pointers in an Inode */
+#define ADDRS_PER_INODE(fi)	addrs_per_inode(fi)
 #define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
+
+#define	NODE_DIR1_BLOCK		(DEF_ADDRS_PER_INODE + 1)
+#define	NODE_DIR2_BLOCK		(DEF_ADDRS_PER_INODE + 2)
+#define	NODE_IND1_BLOCK		(DEF_ADDRS_PER_INODE + 3)
+#define	NODE_IND2_BLOCK		(DEF_ADDRS_PER_INODE + 4)
+#define	NODE_DIND_BLOCK		(DEF_ADDRS_PER_INODE + 5)
+
+#define F2FS_INLINE_XATTR	0x01	/* file inline xattr flag */
+#define F2FS_INLINE_DATA	0x02	/* file inline data flag */
+#define F2FS_INLINE_DENTRY	0x04	/* file inline dentry flag */
+#define F2FS_DATA_EXIST		0x08	/* file inline data exist flag */
+
+#define MAX_INLINE_DATA		(sizeof(__le32) * (DEF_ADDRS_PER_INODE - \
+						F2FS_INLINE_XATTR_ADDRS - 1))
+
+#define INLINE_DATA_OFFSET	(PAGE_CACHE_SIZE - sizeof(struct node_footer) \
+				- sizeof(__le32)*(DEF_ADDRS_PER_INODE + 5 - 1))
+
+#define DEF_DIR_LEVEL		0
 
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */
 	__u8 i_advise;			/* file hints */
-	__u8 i_reserved;		/* reserved */
+	__u8 i_inline;			/* file inline flags */
 	__le32 i_uid;			/* user ID */
 	__le32 i_gid;			/* group ID */
 	__le32 i_links;			/* links count */
@@ -341,11 +467,11 @@ struct f2fs_inode {
 	__le32 i_pino;			/* parent inode number */
 	__le32 i_namelen;		/* file name length */
 	__u8 i_name[F2FS_NAME_LEN];	/* file name for SPOR */
-	__u8 i_reserved2;		/* for backward compatibility */
+	__u8 i_dir_level;		/* dentry_level for large dir */
 
 	struct f2fs_extent i_ext;	/* caching a largest extent */
 
-	__le32 i_addr[ADDRS_PER_INODE];	/* Pointers to data blocks */
+	__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
 
 	__le32 i_nid[5];		/* direct(2), indirect(2),
 						double_indirect(1) node id */
@@ -365,6 +491,9 @@ enum {
 	DENT_BIT_SHIFT,
 	OFFSET_BIT_SHIFT
 };
+
+#define XATTR_NODE_OFFSET	((((unsigned int)-1) << OFFSET_BIT_SHIFT) \
+				>> OFFSET_BIT_SHIFT)
 
 struct node_footer {
 	__le32 nid;		/* node id */
@@ -410,6 +539,13 @@ struct f2fs_nat_block {
 #define SIT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_sit_entry))
 
 /*
+ * F2FS uses 4 bytes to represent block address. As a result, supported size of
+ * disk is 16 TB and it equals to 16 * 1024 * 1024 / 2 segments.
+ */
+#define F2FS_MAX_SEGMENT       ((16 * 1024 * 1024) / 2)
+#define MAX_SIT_BITMAP_SIZE    ((F2FS_MAX_SEGMENT / SIT_ENTRY_PER_BLOCK) / 8)
+
+/*
  * Note that f2fs_sit_entry->vblocks has the following bit-field information.
  * [15:10] : allocation type such as CURSEG_XXXX_TYPE
  * [9:0] : valid block count
@@ -450,7 +586,7 @@ struct f2fs_sit_block {
 #define ENTRIES_IN_SUM		512
 #define	SUMMARY_SIZE		(7)	/* sizeof(struct summary) */
 #define	SUM_FOOTER_SIZE		(5)	/* sizeof(struct summary_footer) */
-#define SUM_ENTRY_SIZE		(SUMMARY_SIZE * ENTRIES_IN_SUM)
+#define SUM_ENTRIES_SIZE	(SUMMARY_SIZE * ENTRIES_IN_SUM)
 
 /* a summary entry for a 4KB-sized block in a segment */
 struct f2fs_summary {
@@ -474,7 +610,7 @@ struct summary_footer {
 } __attribute__((packed));
 
 #define SUM_JOURNAL_SIZE	(F2FS_BLKSIZE - SUM_FOOTER_SIZE -\
-				SUM_ENTRY_SIZE)
+				SUM_ENTRIES_SIZE)
 #define NAT_JOURNAL_ENTRIES	((SUM_JOURNAL_SIZE - 2) /\
 				sizeof(struct nat_journal_entry))
 #define NAT_JOURNAL_RESERVED	((SUM_JOURNAL_SIZE - 2) %\
@@ -573,8 +709,26 @@ struct f2fs_dentry_block {
 	__u8 filename[NR_DENTRY_IN_BLOCK][F2FS_SLOT_LEN];
 } __attribute__((packed));
 
+/* for inline dir */
+#define NR_INLINE_DENTRY	(MAX_INLINE_DATA * BITS_PER_BYTE / \
+				((SIZE_OF_DIR_ENTRY + F2FS_SLOT_LEN) * \
+				BITS_PER_BYTE + 1))
+#define INLINE_DENTRY_BITMAP_SIZE	((NR_INLINE_DENTRY + \
+					BITS_PER_BYTE - 1) / BITS_PER_BYTE)
+#define INLINE_RESERVED_SIZE	(MAX_INLINE_DATA - \
+				((SIZE_OF_DIR_ENTRY + F2FS_SLOT_LEN) * \
+				NR_INLINE_DENTRY + INLINE_DENTRY_BITMAP_SIZE))
+
+/* inline directory entry structure */
+struct f2fs_inline_dentry {
+	__u8 dentry_bitmap[INLINE_DENTRY_BITMAP_SIZE];
+	__u8 reserved[INLINE_RESERVED_SIZE];
+	struct f2fs_dir_entry dentry[NR_INLINE_DENTRY];
+	__u8 filename[NR_INLINE_DENTRY][F2FS_SLOT_LEN];
+} __packed;
+
 /* file types used in inode_info->flags */
-enum {
+enum FILE_TYPE {
 	F2FS_FT_UNKNOWN,
 	F2FS_FT_REG_FILE,
 	F2FS_FT_DIR,
@@ -583,26 +737,61 @@ enum {
 	F2FS_FT_FIFO,
 	F2FS_FT_SOCK,
 	F2FS_FT_SYMLINK,
-	F2FS_FT_MAX
+	F2FS_FT_MAX,
+	/* added for fsck */
+	F2FS_FT_ORPHAN,
+	F2FS_FT_XATTR,
+	F2FS_FT_LAST_FILE_TYPE = F2FS_FT_XATTR,
 };
 
-void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
-int log_base_2(u_int32_t);
+/* from f2fs/segment.h */
+enum {
+	LFS = 0,
+	SSR
+};
 
-int f2fs_test_bit(unsigned int, const char *);
-int f2fs_set_bit(unsigned int, unsigned char *);
-int f2fs_clear_bit(unsigned int, char *);
+extern void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
+extern int log_base_2(u_int32_t);
+extern unsigned int addrs_per_inode(struct f2fs_inode *);
 
-u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
+extern int get_bits_in_byte(unsigned char n);
+extern int set_bit(unsigned int nr,void * addr);
+extern int clear_bit(unsigned int nr, void * addr);
+extern int test_bit(unsigned int nr, const void * addr);
+extern int f2fs_test_bit(unsigned int, const char *);
+extern int f2fs_set_bit(unsigned int, char *);
+extern int f2fs_clear_bit(unsigned int, char *);
+extern unsigned long find_next_bit(const unsigned long *,
+				unsigned long, unsigned long);
 
-void f2fs_init_configuration(struct f2fs_configuration *);
-int f2fs_dev_is_mounted(struct f2fs_configuration *);
-int f2fs_get_device_info(struct f2fs_configuration *);
+extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
+extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
 
-int dev_read(void *, __u64, size_t);
-int dev_write(void *, __u64, size_t);
+extern void f2fs_init_configuration(struct f2fs_configuration *);
+extern int f2fs_dev_is_umounted(struct f2fs_configuration *);
+extern int f2fs_get_device_info(struct f2fs_configuration *);
+extern void f2fs_finalize_device(struct f2fs_configuration *);
 
-int dev_read_block(void *, __u64);
-int dev_read_blocks(void *, __u64, __u32 );
+extern int dev_read(void *, __u64, size_t);
+extern int dev_write(void *, __u64, size_t);
+extern int dev_write_block(void *, __u64);
+extern int dev_write_dump(void *, __u64, size_t);
+/* All bytes in the buffer must be 0 use dev_fill(). */
+extern int dev_fill(void *, __u64, size_t);
+
+extern int dev_read_block(void *, __u64);
+extern int dev_read_blocks(void *, __u64, __u32 );
+extern int dev_reada_block(__u64);
+
+extern int dev_read_version(void *, __u64, size_t);
+extern void get_kernel_version(__u8 *);
+f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
+
+extern struct f2fs_configuration config;
+
+#define ALIGN(val, size)	((val) + (size) - 1) / (size)
+#define SEG_ALIGN(blks)		ALIGN(blks, config.blks_per_seg)
+#define ZONE_ALIGN(blks)	ALIGN(blks, config.blks_per_seg * \
+					config.segs_per_zone)
 
 #endif	/*__F2FS_FS_H */
