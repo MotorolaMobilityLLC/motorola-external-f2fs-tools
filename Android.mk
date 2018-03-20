@@ -95,7 +95,6 @@ LOCAL_STATIC_LIBRARIES := libf2fs_fmt
 LOCAL_SHARED_LIBRARIES := libext2_uuid libsparse
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
 LOCAL_MODULE_TAGS := optional
-LOCAL_PROPRIETARY_MODULE := true
 include $(BUILD_EXECUTABLE)
 
 #----------------------------------------------------------
