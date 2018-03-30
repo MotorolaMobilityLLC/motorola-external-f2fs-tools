@@ -39,18 +39,21 @@ static int run(char *cmd)
 
 	switch (fork()) {
 	case 0:
+		/* redirect stderr to stdout */
+		dup2(1, 2);
 		execl("/system/bin/sh", "sh", "-c", cmd, (char *) 0);
 	default:
 		wait(&status);
 	}
+	return 0;
 }
 
 static int test_atomic_write(char *path)
 {
-	int db, ret, written, i;
+	int db, ret, written;
 
 	printf("\tOpen  %s... \n", path);
-	db = open(path, O_RDWR|O_CREAT);
+	db = open(path, O_RDWR|O_CREAT, 0666);
 	if (db < 0) {
 		printf("open failed errno:%d\n", errno);
 		return -1;
@@ -79,17 +82,15 @@ static int test_atomic_write(char *path)
 	return 0;
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
-	int db, ret, written, i;
-
 	memset(buf, 0xff, BLOCKS);
 
 	printf("# Test 0: Check F2FS support\n");
 	run("cat /proc/filesystems");
 
-	printf("# Test 1: Check F2FS status on /userata\n");
-	printf("\t= FS type /userata\n");
+	printf("# Test 1: Check F2FS status on /userdata\n");
+	printf("\t= FS type /userdata\n");
 	run("mount | grep data");
 
 	printf("\n\t= F2FS features\n");
@@ -99,7 +100,7 @@ int main(int argc, char **argv)
 	run("find /sys/fs/f2fs -type f -name \"discard_granularity\" -print -exec cat {} \\;");
 	run("cat /sys/kernel/debug/f2fs/status");
 
-	printf("\n\n# Test 2: Atomic_write on /userata\n");
+	printf("\n\n# Test 2: Atomic_write on /userdata\n");
 	if (test_atomic_write(DB1_PATH))
 		return -1;
 
