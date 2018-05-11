@@ -13,6 +13,8 @@
 
 #include "f2fs.h"
 
+#include <android/log.h>
+
 /* fsck.c */
 struct orphan_info {
 	u32 nr_inodes;

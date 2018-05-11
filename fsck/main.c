@@ -142,15 +142,20 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 {
 	u32 blk_cnt;
 
+        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into do_fsck before fsck_init");
 	fsck_init(sbi);
+        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into do_fsck after fsck_init");
 
 	fsck_chk_orphan_node(sbi);
+        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into do_fsck after fsck_chk_orphan_node");
 
 	/* Traverse all block recursively from root inode */
 	blk_cnt = 1;
 	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
 			F2FS_FT_DIR, TYPE_INODE, &blk_cnt);
+        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into do_fsck after fsck_chk_node_blk");
 	fsck_verify(sbi);
+        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into do_fsck after fsck_verify");
 	fsck_free(sbi);
 }
 
@@ -201,7 +206,7 @@ int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
 	int ret = 0;
-
+        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into fsck main disable printf");
 	f2fs_init_configuration(&config);
 
 	f2fs_parse_options(argc, argv);
