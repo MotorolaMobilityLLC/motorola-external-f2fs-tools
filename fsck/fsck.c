@@ -317,20 +317,14 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	struct node_info ni;
 	struct f2fs_node *node_blk = NULL;
 
-        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into fsck_chk_node_blk");
-
 	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
 	ASSERT(node_blk != NULL);
 
 	if (sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni))
 		goto err;
 
-        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck after sanity_check_nid");
-
 	if (ntype == TYPE_INODE) {
-                __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck333333 before fsck_chk_inode_blk");
 		fsck_chk_inode_blk(sbi, nid, ftype, node_blk, blk_cnt, &ni);
-                __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck333333 after fsck_chk_inode_blk");
 	} else {
 		switch (ntype) {
 		case TYPE_DIRECT_NODE:
@@ -356,7 +350,6 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		}
 	}
 	free(node_blk);
-        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck fsck_chk_node_blk will return");
 	return 0;
 err:
 	free(node_blk);
@@ -377,15 +370,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	int need_fix = 0;
 	int ret;
 
-        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck enter into fsck_chk_inode_blk");
-
 	if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0)
 		fsck->chk.valid_inode_cnt++;
 
 	if (ftype == F2FS_FT_DIR) {
 		f2fs_set_main_bitmap(sbi, ni->blk_addr, CURSEG_HOT_NODE);
 	} else {
-
 		if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
 			f2fs_set_main_bitmap(sbi, ni->blk_addr,
 							CURSEG_WARM_NODE);
@@ -396,7 +386,6 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			}
 		} else {
 			DBG(3, "[0x%x] has hard links [0x%x]\n", nid, i_links);
-
 			if (find_and_dec_hard_link_list(sbi, nid)) {
 				ASSERT_MSG("[0x%x] needs more i_links=0x%x",
 						nid, i_links);
@@ -424,7 +413,6 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 				nid, le32_to_cpu(node_blk->i.i_xattr_nid));
 	}
 
-        __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck ftype = %d", ftype);
 	if (ftype == F2FS_FT_CHRDEV || ftype == F2FS_FT_BLKDEV ||
 			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
 		goto check;
@@ -775,7 +763,6 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 						dentry, max, i, last_blk);
 
 		blk_cnt = 1;
-                __android_log_print(ANDROID_LOG_ERROR, "f2fsck", "f2fsck will call fsck_chk_node_blk in __chk_dentries line # 787");
 		ret = fsck_chk_node_blk(sbi,
 				NULL, le32_to_cpu(dentry[i].ino),
 				ftype, TYPE_INODE, &blk_cnt);

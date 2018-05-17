@@ -105,8 +105,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := $(common_C_INCLUDES)
 LOCAL_CFLAGS := $(version_CFLAGS)
-LOCAL_SHARED_LIBRARIES := libext2_uuid \
-                          liblog
+LOCAL_SHARED_LIBRARIES := libext2_uuid
 LOCAL_SYSTEM_SHARED_LIBRARIES := libc
 LOCAL_MODULE_TAGS := optional
 include $(BUILD_EXECUTABLE)
@@ -124,7 +123,6 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := $(common_C_INCLUDES)
 LOCAL_CFLAGS := $(version_CFLAGS)
-LOCAL_SHARED_LIBRARIES :=liblog
 LOCAL_HOST_SHARED_LIBRARIES :=  libext2_uuid
 include $(BUILD_HOST_EXECUTABLE)
 
