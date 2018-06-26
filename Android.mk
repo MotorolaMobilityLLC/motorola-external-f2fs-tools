@@ -80,4 +80,39 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_WHOLE_STATIC_LIBRARIES := libbase
 include $(BUILD_EXECUTABLE)
 
+#----------------------------------------------------------
+include $(CLEAR_VARS)
+# The LOCAL_MODULE name is referenced by the code. Don't change it.
+LOCAL_MODULE := resize.f2fs
+
+LOCAL_SRC_FILES := \
+    fsck/fsck.c \
+    fsck/defrag.c \
+    fsck/sload.c \
+    fsck/resize.c \
+    fsck/dir.c \
+    fsck/dict.c \
+    fsck/mkquota.c \
+    fsck/quotaio.c \
+    fsck/quotaio_tree.c \
+    fsck/quotaio_v2.c \
+    fsck/node.c \
+    fsck/segment.c \
+    fsck/xattr.c \
+    fsck/main.c \
+    fsck/mount.c \
+    lib/libf2fs.c \
+    lib/libf2fs_io.c
+LOCAL_C_INCLUDES := $(common_C_INCLUDES)
+LOCAL_CFLAGS := $(common_CFLAGS) -DWITH_RESIZE
+LOCAL_STATIC_LIBRARIES := \
+    libcutils \
+    libselinux \
+    libcrypto \
+    libsparse \
+    liblog \
+    libz
+LOCAL_WHOLE_STATIC_LIBRARIES := libbase
+include $(BUILD_EXECUTABLE)
+
 endif
