@@ -56,16 +56,13 @@ static void mkfs_usage()
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
 	MSG(0, "  -w wanted sector size\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
-        MSG(0, "  -r reserved_bytes [default:0]\n");
-        MSG(0, "     (use only device_size-reserved_bytes for filesystem)\n");
 	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
 	exit(1);
 }
 
 static void f2fs_show_info()
 {
-        MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)"
-                "[modified by Motorola for ARM and to reserve space]\n\n",
+	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
 				F2FS_TOOLS_VERSION,
 				F2FS_TOOLS_DATE);
 	if (c.heap == 0)
@@ -108,7 +105,7 @@ static void parse_feature(const char *features)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:l:mo:O:s:S:z:t:fw:r:";
+	static const char *option_string = "qa:c:d:e:l:mo:O:s:S:z:t:fw:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -175,9 +172,6 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 'w':
 			c.wanted_sector_size = atoi(optarg);
 			break;
-                case 'r':
-                        c.bytes_reserved = atoi(optarg);
-                        break;
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
 			mkfs_usage();

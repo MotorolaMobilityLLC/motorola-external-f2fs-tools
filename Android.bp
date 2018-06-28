@@ -99,7 +99,6 @@ cc_binary {
         "make_f2fs_src_files",
     ],
     host_supported: true,
-    vendor: true,
     target: {
         android: {
             static_libs: [
