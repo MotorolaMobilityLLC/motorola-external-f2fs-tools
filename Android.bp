@@ -92,6 +92,33 @@ cc_library_host_static {
     },
 }
 
+cc_library_host_shared {
+    name: "libf2fs_fmt_host_dyn",
+    defaults: [
+        "f2fs-tools-defaults",
+        "libf2fs_src_files"
+    ],
+    srcs: [
+        "lib/libf2fs_io.c",
+    ],
+    target: {
+        host: {
+            static_libs: [
+                "libext2_uuid",
+                "libsparse",
+                "libbase",
+                "libz",
+            ],
+        },
+
+        windows: {
+            include_dirs: [ "external/e2fsprogs/include/mingw" ],
+            cflags: ["-DANDROID_WINDOWS_HOST"],
+            enabled: true
+	},
+    },
+}
+
 cc_binary {
     name: "make_f2fs",
     defaults: [
