@@ -206,6 +206,33 @@ static void migrate_main(struct f2fs_sb_info *sbi, unsigned int offset)
 				START_BLOCK(sbi, 0) + offset);
 }
 
+int try_wipe_blocks(unsigned char *buf,
+		u_int64_t blk_addr, u_int64_t blk_cnt)
+{
+	int ret;
+
+	ASSERT(blk_cnt != 0);
+
+	if (!f2fs_single_dev())
+		return -1;
+
+	dev_drop_cache_blocks(blk_addr << F2FS_BLKSIZE_BITS, blk_cnt << F2FS_BLKSIZE_BITS);
+
+	ret = dev_wipe_blocks(blk_addr, 1ULL);
+	ASSERT(ret == 0);
+
+	ret = dev_read_block(buf, blk_addr);
+	ASSERT(ret == 0);
+	if (*buf == 0) {
+		ret = dev_wipe_blocks(blk_addr + 1, blk_cnt - 1);
+		ASSERT(ret == 0);
+		return 0;
+	}
+
+	MSG(0, "discard result is 0x%hhx, use write!\n", *buf);
+	return -1;
+}
+
 static void move_ssa(struct f2fs_sb_info *sbi, unsigned int segno,
 					block_t new_sum_blk_addr)
 {
@@ -257,6 +284,14 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	} else {
 		blkaddr = end_sum_blkaddr - 1;
 		offset = TOTAL_SEGS(sbi) - 1;
+
+		ret = try_wipe_blocks((unsigned char *)zero_block,
+			expand_sum_blkaddr, blkaddr - expand_sum_blkaddr + 1);
+		if (ret == 0)
+			blkaddr = expand_sum_blkaddr - 1;
+		else
+			memset(zero_block, 0, BLOCK_SZ);
+
 		while (blkaddr >= new_sum_blkaddr) {
 			if (blkaddr >= expand_sum_blkaddr) {
 				ret = dev_write_block(zero_block, blkaddr--);
@@ -331,7 +366,7 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 	void *nat_block;
 	int nid, ret, new_max_nid;
 	pgoff_t block_off;
-	pgoff_t block_addr;
+	pgoff_t block_addr, block_addr_2;
 	int seg_off;
 
 	nat_block = malloc(BLOCK_SZ);
@@ -350,15 +385,19 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 			f2fs_clear_bit(block_off, nm_i->nat_bitmap);
 		}
 
-		ret = dev_read_block(nat_block, block_addr);
-		ASSERT(ret >= 0);
-
-		block_addr = (pgoff_t)(new_nat_blkaddr +
+		block_addr_2 = (pgoff_t)(new_nat_blkaddr +
 				(seg_off << sbi->log_blocks_per_seg << 1) +
 				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
 
+		/*skip moving when source and destination address are the same */
+		if (block_addr_2 == block_addr)
+			continue;
+
+		ret = dev_read_block(nat_block, block_addr);
+		ASSERT(ret >= 0);
+
 		/* new bitmap should be zeros */
-		ret = dev_write_block(nat_block, block_addr);
+		ret = dev_write_block(nat_block, block_addr_2);
 		ASSERT(ret >= 0);
 	}
 	/* zero out newly assigned nids */
@@ -372,6 +411,23 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 			get_sb(segment_count_nat),
 			get_newsb(segment_count_nat));
 
+	if (nm_i->max_nid < new_max_nid) {
+		block_off = nm_i->max_nid / NAT_ENTRY_PER_BLOCK;
+		seg_off = block_off >> sbi->log_blocks_per_seg;
+		block_addr = (pgoff_t)(new_nat_blkaddr +
+				(seg_off << sbi->log_blocks_per_seg << 1) +
+				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
+
+		seg_off = nat_blocks >> sbi->log_blocks_per_seg;
+		block_addr_2 = (pgoff_t)(new_nat_blkaddr +
+				(seg_off << sbi->log_blocks_per_seg << 1) +
+				(nat_blocks & ((1 << sbi->log_blocks_per_seg) - 1)));
+		ret = try_wipe_blocks(nat_block, block_addr, block_addr_2 - block_addr);
+		if (ret == 0)
+			goto out;
+		memset(nat_block, 0, BLOCK_SZ);
+	}
+
 	for (nid = nm_i->max_nid; nid < new_max_nid;
 				nid += NAT_ENTRY_PER_BLOCK) {
 		block_off = nid / NAT_ENTRY_PER_BLOCK;
@@ -383,6 +439,7 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 		ASSERT(ret >= 0);
 		DBG(3, "Write NAT: %lx\n", block_addr);
 	}
+out:
 	DBG(0, "Info: Done to migrate NAT blocks: nat_blkaddr = 0x%x -> 0x%x\n",
 			old_nat_blkaddr, new_nat_blkaddr);
 }
@@ -403,12 +460,17 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 	ASSERT(sit_blk);
 
 	/* initialize with zeros */
+	ret = try_wipe_blocks((unsigned char *)sit_blk, get_newsb(sit_blkaddr), sit_blks);
+	if (ret == 0)
+		goto write_sit;
+	memset(sit_blk, 0, BLOCK_SZ);
 	for (index = 0; index < sit_blks; index++) {
 		ret = dev_write_block(sit_blk, get_newsb(sit_blkaddr) + index);
 		ASSERT(ret >= 0);
 		DBG(3, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
 	}
 
+write_sit:
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
 		struct f2fs_sit_entry *sit;
 

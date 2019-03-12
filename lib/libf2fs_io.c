@@ -194,6 +194,17 @@ int dev_readahead(__u64 offset, size_t UNUSED(len))
 #endif
 }
 
+int dev_drop_cache_blocks(__u64 offset, u_int64_t blk_cnt)
+{
+	int fd = __get_device_fd(&offset);
+
+	if (fd < 0)
+		return fd;
+
+	return posix_fadvise64(fd, offset, blk_cnt << F2FS_BLKSIZE_BITS,
+		POSIX_FADV_DONTNEED);
+}
+
 int dev_write(void *buf, __u64 offset, size_t len)
 {
 	int fd;
@@ -230,6 +241,27 @@ int dev_write_dump(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+#define BLKDISCARD	_IO(0x12,119)
+#define BLKSECDISCARD	_IO(0x12,125)
+
+int dev_wipe_blocks(__u64 blk_addr, __u64 blk_cnt)
+{
+	u64 range[2];
+	int fd;
+
+	if (c.dry_run)
+		return 0;
+
+	blk_addr = blk_addr << F2FS_BLKSIZE_BITS;
+	fd = __get_device_fd(&blk_addr);
+	if (fd < 0)
+		return fd;
+
+	range[0] = blk_addr;
+	range[1] = F2FS_BLKSIZE * blk_cnt;
+	return ioctl(fd, BLKSECDISCARD, &range);
+}
+
 int dev_fill(void *buf, __u64 offset, size_t len)
 {
 	int fd;
@@ -264,6 +296,11 @@ int dev_read_block(void *buf, __u64 blk_addr)
 int dev_reada_block(__u64 blk_addr)
 {
 	return dev_readahead(blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
+}
+
+int f2fs_single_dev(void)
+{
+	return (c.ndevs == 1) ? 1: 0;
 }
 
 int f2fs_fsync_device(void)

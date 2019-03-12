@@ -1155,11 +1155,14 @@ extern int get_device_info(int);
 extern int f2fs_init_sparse_file(void);
 extern int f2fs_finalize_device(void);
 extern int f2fs_fsync_device(void);
+extern int f2fs_single_dev(void);
 
 extern int dev_read(void *, __u64, size_t);
 extern int dev_write(void *, __u64, size_t);
 extern int dev_write_block(void *, __u64);
 extern int dev_write_dump(void *, __u64, size_t);
+extern int dev_wipe_blocks(__u64 blk_addr, __u64 blk_cnt);
+extern int dev_drop_cache_blocks(__u64 offset, u_int64_t blk_cnt);
 /* All bytes in the buffer must be 0 use dev_fill(). */
 extern int dev_fill(void *, __u64, size_t);
 extern int dev_fill_block(void *, __u64);
