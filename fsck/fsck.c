@@ -1823,6 +1823,9 @@ void fsck_init(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_sm_info *sm_i = SM_I(sbi);
+	struct timespec begin, end, delta;
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	/*
 	 * We build three bitmap for main/sit/nat so that may check consistency
@@ -1844,6 +1847,9 @@ void fsck_init(struct f2fs_sb_info *sbi)
 
 	ASSERT(tree_mark_size != 0);
 	tree_mark = calloc(tree_mark_size, 1);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	__subtract_timespecs(&end, &begin, &delta);
+	MSG(0, " fsck_init takes %ld %ld!\n", delta.tv_sec, delta.tv_nsec);
 	ASSERT(tree_mark != NULL);
 }
 

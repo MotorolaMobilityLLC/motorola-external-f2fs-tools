@@ -34,6 +34,7 @@
 #include <linux/types.h>
 #endif
 #include <sys/types.h>
+#include <time.h>
 
 #ifdef HAVE_LINUX_BLKZONED_H
 #include <linux/blkzoned.h>
@@ -1283,4 +1284,20 @@ static inline int is_qf_ino(struct f2fs_super_block *sb, nid_t ino)
 	return 0;
 }
 
+/* This must be written a million times... */
+static inline void __subtract_timespecs(const struct timespec *end,
+				      const struct timespec *beg,
+				      struct timespec *diff)
+{
+	diff->tv_sec = end->tv_sec - beg->tv_sec;
+	diff->tv_nsec = end->tv_nsec - beg->tv_nsec;
+	/* Adjust tv_sec and tv_nsec to the same sign. */
+	if (diff->tv_sec > 0 && diff->tv_nsec < 0) {
+		diff->tv_sec--;
+		diff->tv_nsec += 1000000000L;
+	} else if (diff->tv_sec < 0 && diff->tv_nsec > 0) {
+		diff->tv_sec++;
+		diff->tv_nsec -= 1000000000L;
+	}
+}
 #endif	/*__F2FS_FS_H */

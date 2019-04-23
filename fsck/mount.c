@@ -2313,6 +2313,9 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *cp = NULL;
 	struct f2fs_super_block *sb = NULL;
 	int ret;
+	struct timespec begin, end, delta;
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	sbi->active_logs = NR_CURSEG_TYPE;
 	ret = validate_super_block(sbi, 0);
@@ -2406,6 +2409,9 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 			MSG(0, "Info: Found valid nat_bits in checkpoint\n");
 		free(kaddr);
 	}
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	__subtract_timespecs(&end, &begin, &delta);
+	MSG(0, " f2fs_do_mount takes total (%ld) s (%ld) ns!\n", delta.tv_sec, delta.tv_nsec);
 	return 0;
 }
 

@@ -513,6 +513,9 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 	u32 blk_cnt;
 	errcode_t ret;
+	struct timespec begin, end, delta;
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	fsck_init(sbi);
 
@@ -550,10 +553,15 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 	}
 
 	fsck_chk_quota_node(sbi);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	__subtract_timespecs(&end, &begin, &delta);
+	MSG(0, " do_fsck stage 1 takes total (%ld) s (%ld) ns!\n",
+		delta.tv_sec, delta.tv_nsec);
 
 	/* Traverse all block recursively from root inode */
 	blk_cnt = 1;
 
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
 		ret = quota_init_context(sbi);
 		if (ret) {
@@ -562,12 +570,32 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 		}
 	}
 	fsck_chk_orphan_node(sbi);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		__subtract_timespecs(&end, &begin, &delta);
+		MSG(0, " do_fsck stage 2 takes total (%ld) s (%ld) ns!\n",
+			delta.tv_sec, delta.tv_nsec);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
 			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, NULL);
-	fsck_chk_quota_files(sbi);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		__subtract_timespecs(&end, &begin, &delta);
+		MSG(0, " do_fsck stage 3 takes total (%ld) s (%ld) ns!\n",
+			delta.tv_sec, delta.tv_nsec);
 
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+	fsck_chk_quota_files(sbi);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		__subtract_timespecs(&end, &begin, &delta);
+		MSG(0, " do_fsck stage 4 takes total (%ld) s (%ld) ns!\n",
+			delta.tv_sec, delta.tv_nsec);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	fsck_verify(sbi);
 	fsck_free(sbi);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	__subtract_timespecs(&end, &begin, &delta);
+	MSG(0, " do_fsck stage 5 (%ld) s (%ld) ns!\n", delta.tv_sec, delta.tv_nsec);
 }
 
 static void do_dump(struct f2fs_sb_info *sbi)
@@ -684,6 +712,9 @@ int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
 	int ret = 0;
+	struct timespec begin, end, delta;
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
 	f2fs_init_configuration();
 
@@ -780,7 +811,15 @@ retry:
 				goto fsck_again;
 		}
 	}
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	__subtract_timespecs(&end, &begin, &delta);
+	MSG(0, " fsck stage 1 takes (%ld) s (%ld) ns!\n", delta.tv_sec, delta.tv_nsec);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 	ret = f2fs_finalize_device();
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	__subtract_timespecs(&end, &begin, &delta);
+	MSG(0, " fsck stage 2 takes (%ld) s (%ld) ns!\n", delta.tv_sec, delta.tv_nsec);
 	if (ret < 0)
 		return ret;
 

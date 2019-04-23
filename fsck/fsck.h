@@ -11,6 +11,7 @@
 #ifndef _FSCK_H_
 #define _FSCK_H_
 
+#include <time.h>
 #include "f2fs.h"
 
 struct quota_ctx;
