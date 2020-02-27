@@ -517,10 +517,6 @@ static int f2fs_prepare_super_block(void)
 	memcpy(sb->init_version, c.version, VERSION_LEN);
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
-			MSG(0, "\tError: Casefolding and encryption are not compatible\n");
-			return -1;
-		}
 		set_sb(s_encoding, c.s_encoding);
 		set_sb(s_encoding_flags, c.s_encoding_flags);
 	}
@@ -1150,6 +1146,12 @@ static int f2fs_write_root_inode(void)
 		raw_node->i.i_crtime_nsec = 0;
 	}
 
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+		raw_node->i.i_compress_algrithm = 0;
+		raw_node->i.i_log_cluster_size = 0;
+		raw_node->i.i_padding = 0;
+	}
+
 	data_blk_nor = get_sb(main_blkaddr) +
 		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg;
 	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);
@@ -1498,6 +1500,12 @@ static int f2fs_write_lpf_inode(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
 		raw_node->i.i_crtime = cpu_to_le32(time(NULL));
 		raw_node->i.i_crtime_nsec = 0;
+	}
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+		raw_node->i.i_compress_algrithm = 0;
+		raw_node->i.i_log_cluster_size = 0;
+		raw_node->i.i_padding = 0;
 	}
 
 	data_blk_nor = f2fs_add_default_dentry_lpf();
