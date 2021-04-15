@@ -543,6 +543,7 @@ struct f2fs_configuration {
 
 	/* precomputed fs UUID checksum for seeding other checksums */
 	u_int32_t chksum_seed;
+	u_int32_t bytes_reserved;
 
 	/* cache parameters */
 	dev_cache_config_t cache_config;

@@ -125,6 +125,7 @@ void resize_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -i extended node bitmap, node ratio is 20%% by default\n");
 	MSG(0, "  -s safe resize (Does not resize metadata)");
+	MSG(0, "  -r reserved_bytes [default:0]\n");
 	MSG(0, "  -t target sectors [default: device size]\n");
 	MSG(0, "  -V print the version number and exit\n");
 	exit(1);
@@ -529,7 +530,7 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif
 	} else if (!strcmp("resize.f2fs", prog)) {
 #ifdef WITH_RESIZE
-		const char *option_string = "d:fst:iV";
+		const char *option_string = "d:fst:r:iV";
 
 		c.func = RESIZE;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -551,6 +552,14 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 			case 's':
 				c.safe_resize = 1;
+				break;
+			case 'r':
+				if (strncmp(optarg, "0x", 2))
+					ret = sscanf(optarg, "%"PRIu32"",
+							&c.bytes_reserved);
+				else
+					ret = sscanf(optarg, "%x",
+							&c.bytes_reserved);
 				break;
 			case 't':
 				if (strncmp(optarg, "0x", 2))

@@ -1016,6 +1016,22 @@ int get_device_info(int i)
 		free(stat_buf);
 		return -1;
 	}
+	if (c.bytes_reserved) {
+		unsigned int reserved_sectors;
+		reserved_sectors = c.bytes_reserved / dev->sector_size;
+		if (c.bytes_reserved % dev->sector_size)
+			reserved_sectors++;
+		if(reserved_sectors >= dev->total_sectors) {
+			MSG(0, "\n\Error: reserved bytes (%u sectors) is bigger than the device size (%u sectors)\n",
+				(unsigned int) reserved_sectors,
+				(unsigned int) dev->total_sectors);
+			return -1;
+		}
+
+		MSG(0, "Info: Reserved %u sectors ", (unsigned int) reserved_sectors);
+		MSG(0, "from device of size %u sectors\n", (unsigned int) dev->total_sectors);
+		dev->total_sectors -= reserved_sectors;
+	}
 
 	if (!c.sector_size) {
 		c.sector_size = dev->sector_size;
