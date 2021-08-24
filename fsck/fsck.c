@@ -386,6 +386,47 @@ err:
 	return -1;
 }
 
+static void dump_buffer(char *buf, u32 len, char *msg)
+{
+	u32 i;
+
+	MSG(0, "%s:\n", msg);
+	for (i = 0; i < len; i++) {
+		if ((i % 16 == 0) && (i != 0))
+			MSG(0, "\n");
+		MSG(0, "%02x ", buf[i]);
+	}
+	MSG(0, "\n");
+}
+
+static bool nodeblk_is_need_dump(nid_t nid)
+{
+        return (nid == 0x3 || nid == 0x4 ||
+                nid == 0x5);
+}
+
+void dump_nat_block_info(struct f2fs_sb_info *sbi, nid_t nid)
+{
+	struct f2fs_nat_block *nat_block;
+	pgoff_t block_addr;
+	struct f2fs_nat_entry raw_nat;
+	char *ptr;
+	int ret;
+
+	if (lookup_nat_in_journal(sbi, nid, &raw_nat) >= 0) {
+		MSG(0, "get ni journal ver[%x] ino[%x] blk_addr[%x]\n",
+			raw_nat.version, raw_nat.ino,
+			raw_nat.block_addr);
+	}
+	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	ASSERT(nat_block);
+	block_addr = current_nat_addr(sbi, nid, NULL);
+	ret = dev_read_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+	ptr = (char*)nat_block;
+	dump_buffer(ptr, 128, "nat infor");
+	free(nat_block);
+}
 static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 			struct f2fs_node *node_blk,
 			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
@@ -420,21 +461,40 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 
 	if (ntype == TYPE_INODE &&
 			node_blk->footer.nid != node_blk->footer.ino) {
-		ASSERT_MSG("nid[0x%x] footer.nid[0x%x] footer.ino[0x%x]",
-				nid, le32_to_cpu(node_blk->footer.nid),
+		ASSERT_MSG("nid[0x%x] blk_addr[0x%x] footer.nid[0x%x] footer.ino[0x%x]",
+				nid, ni->blk_addr, le32_to_cpu(node_blk->footer.nid),
 				le32_to_cpu(node_blk->footer.ino));
+		if (nodeblk_is_need_dump(nid)) {
+			char * ptr = (char *)node_blk;
+			dump_nat_block_info(sbi, nid);
+			dump_buffer(ptr, 512, "node_blk_head");
+			dump_buffer(ptr + BLOCK_SZ - 128, 128, "node_blk_foot");
+		}
 		return -EINVAL;
 	}
 	if (ni->ino != le32_to_cpu(node_blk->footer.ino)) {
-		ASSERT_MSG("nid[0x%x] nat_entry->ino[0x%x] footer.ino[0x%x]",
-				nid, ni->ino, le32_to_cpu(node_blk->footer.ino));
+		ASSERT_MSG("nid[0x%x] blk_addr[0x%x] nat_entry->ino[0x%x] footer.ino[0x%x]",
+				nid, ni->blk_addr, ni->ino,
+				le32_to_cpu(node_blk->footer.ino));
+		if (nodeblk_is_need_dump(nid)) {
+			char * ptr = (char *)node_blk;
+			dump_nat_block_info(sbi, nid);
+			dump_buffer(ptr, 512, "node_blk_head");
+			dump_buffer(ptr + BLOCK_SZ - 128, 128, "node_blk_foot");
+		}
 		return -EINVAL;
 	}
 	if (ntype != TYPE_INODE &&
 			node_blk->footer.nid == node_blk->footer.ino) {
-		ASSERT_MSG("nid[0x%x] footer.nid[0x%x] footer.ino[0x%x]",
-				nid, le32_to_cpu(node_blk->footer.nid),
+		ASSERT_MSG("nid[0x%x] blk_addr[0x%x] footer.nid[0x%x] footer.ino[0x%x]",
+				nid, ni->blk_addr, le32_to_cpu(node_blk->footer.nid),
 				le32_to_cpu(node_blk->footer.ino));
+		if (nodeblk_is_need_dump(nid)) {
+			char * ptr = (char *)node_blk;
+			dump_nat_block_info(sbi, nid);
+			dump_buffer(ptr, 512, "node_blk_head");
+			dump_buffer(ptr + BLOCK_SZ - 128, 128, "node_blk_foot");
+		}
 		return -EINVAL;
 	}
 
@@ -442,6 +502,12 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		ASSERT_MSG("nid[0x%x] blk_addr[0x%x] footer.nid[0x%x]",
 				nid, ni->blk_addr,
 				le32_to_cpu(node_blk->footer.nid));
+		if (nodeblk_is_need_dump(nid)) {
+			char * ptr = (char *)node_blk;
+			dump_nat_block_info(sbi, nid);
+			dump_buffer(ptr, 512, "node_blk_head");
+			dump_buffer(ptr + BLOCK_SZ - 128, 128, "node_blk_foot");
+		}
 		return -EINVAL;
 	}
 
@@ -449,8 +515,14 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		u32 flag = le32_to_cpu(node_blk->footer.flag);
 
 		if ((flag >> OFFSET_BIT_SHIFT) != XATTR_NODE_OFFSET) {
-			ASSERT_MSG("xnid[0x%x] has wrong ofs:[0x%x]",
-					nid, flag);
+			ASSERT_MSG("xnid[0x%x] blk_ddr[0x%x] has wrong ofs:[0x%x]",
+					nid, ni->blk_addr, flag);
+			if (nodeblk_is_need_dump(nid)) {
+				char * ptr = (char *)node_blk;
+				dump_nat_block_info(sbi, nid);
+				dump_buffer(ptr, 512, "node_blk_head");
+				dump_buffer(ptr + BLOCK_SZ - 128, 128, "node_blk_foot");
+			}
 			return -EINVAL;
 		}
 	}
