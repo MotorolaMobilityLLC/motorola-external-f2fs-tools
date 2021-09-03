@@ -31,6 +31,17 @@
 #define ACL_OTHER		(0x20)
 #endif
 
+static void dump_buffer(char *buf, u32 len)
+{
+	u32 i;
+	for (i = 0; i < len; i++) {
+		if ((i % 16 == 0) && (i != 0))
+			MSG(0, "\n");
+		MSG(0, "%02x ", buf[i]);
+	}
+	MSG(0, "\n\n");
+}
+
 static int get_device_idx(struct f2fs_sb_info *sbi, u_int32_t segno)
 {
 	block_t seg_start_blkaddr;
@@ -1025,6 +1036,7 @@ out:
 	free(sbi->raw_super);
 	sbi->raw_super = NULL;
 	MSG(0, "\tCan't find a valid F2FS superblock at 0x%x\n", sb_addr);
+	dump_buffer(buf + F2FS_SUPER_OFFSET, 128);
 
 	return -EINVAL;
 }
@@ -1112,6 +1124,7 @@ static int verify_checksum_chksum(struct f2fs_checkpoint *cp)
 static void *get_checkpoint_version(block_t cp_addr)
 {
 	void *cp_page;
+	char *ptr;
 
 	cp_page = malloc(PAGE_SIZE);
 	ASSERT(cp_page);
@@ -1123,6 +1136,12 @@ static void *get_checkpoint_version(block_t cp_addr)
 		goto out;
 	return cp_page;
 out:
+	if (c.func == FSCK) {
+		MSG(0, "verify %x checksum fail\n", cp_addr);
+		ptr = (char *)cp_page;
+		dump_buffer(ptr, 512);
+		dump_buffer(ptr + PAGE_SIZE - 256, 256);
+	}
 	free(cp_page);
 	return NULL;
 }
@@ -1144,7 +1163,11 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 		goto invalid_cp1;
 
 	pre_version = get_cp(checkpoint_ver);
-
+	if (c.func == FSCK) {
+		MSG(0, "cp_addr: %x, pre_version:0x%llx ubc:0x%llx, vbc:0x%llx\n",
+			cp_addr, pre_version,
+			get_cp(user_block_count), get_cp(valid_block_count));
+	}
 	/* Read the 2nd cp block in this CP pack */
 	cp_addr += get_cp(cp_pack_total_block_count) - 1;
 	cp_page_2 = get_checkpoint_version(cp_addr);
@@ -1153,6 +1176,11 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 
 	cp = (struct f2fs_checkpoint *)cp_page_2;
 	cur_version = get_cp(checkpoint_ver);
+	if (c.func == FSCK) {
+		MSG(0, "cp_addr: %x, cur_version:0x%llx ubc:0x%llx, vbc:0x%llx\n",
+			cp_addr, cur_version,
+			get_cp(user_block_count), get_cp(valid_block_count));
+	}
 
 	if (cur_version == pre_version) {
 		*version = cur_version;
@@ -1190,10 +1218,18 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	 */
 	cp_start_blk_no = get_sb(cp_blkaddr);
 	cp1 = validate_checkpoint(sbi, cp_start_blk_no, &cp1_version);
+	if (c.func == FSCK) {
+		MSG(0, "cp_start_blk_no:0x%llx,cp1:%p,cp1_version:0x%llx\n",
+			cp_start_blk_no, cp1, cp1_version);
+	}
 
 	/* The second checkpoint pack should start at the next segment */
 	cp_start_blk_no += 1 << get_sb(log_blocks_per_seg);
 	cp2 = validate_checkpoint(sbi, cp_start_blk_no, &cp2_version);
+	if (c.func == FSCK) {
+		MSG(0, "cp_start_blk_no:0x%llx,cp2:%p,cp2_version:0x%llx\n",
+			cp_start_blk_no, cp2, cp2_version);
+	}
 
 	if (cp1 && cp2) {
 		if (ver_after(cp2_version, cp1_version)) {

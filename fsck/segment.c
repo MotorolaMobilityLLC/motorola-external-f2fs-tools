@@ -394,6 +394,8 @@ void f2fs_filesize_update(struct f2fs_sb_info *sbi, nid_t ino, u64 filesize)
 	ASSERT(inode);
 	get_node_info(sbi, ino, &ni);
 
+	if (ni.blk_addr == 0)
+		MSG(0, "ino[0x%x] has blk_add[0]!!!\n", ino);
 	ASSERT(dev_read_block(inode, ni.blk_addr) >= 0);
 	ASSERT(!S_ISDIR(le16_to_cpu(inode->i.i_mode)));
 	ASSERT(!S_ISLNK(le16_to_cpu(inode->i.i_mode)));
