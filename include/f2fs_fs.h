@@ -491,6 +491,7 @@ struct f2fs_configuration {
 	int defset;
 	int bug_on;
 	int bug_nat_bits;
+	bool quota_fixed;
 	int alloc_failed;
 	int auto_fix;
 	int layout;
@@ -503,6 +504,7 @@ struct f2fs_configuration {
 	int large_nat_bitmap;
 	int fix_chksum;			/* fix old cp.chksum position */
 	__le32 feature;			/* defined features */
+	unsigned int quota_bits;	/* quota bits */
 	time_t fixed_time;
 
 	/* mkfs parameters */
