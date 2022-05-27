@@ -679,9 +679,6 @@ void f2fs_init_configuration(void)
 	c.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
 	c.wanted_total_sectors = -1;
 	c.wanted_sector_size = -1;
-#ifdef F2FS_RESERVED_SPACE
-	c.bytes_reserved = F2FS_RESERVED_SPACE;
-#endif
 
 #ifndef WITH_ANDROID
 	c.preserve_limits = 1;

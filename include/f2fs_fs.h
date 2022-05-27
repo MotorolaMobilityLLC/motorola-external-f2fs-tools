@@ -353,7 +353,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define	DEFAULT_SECTORS_PER_BLOCK	8
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
-#define F2FS_RESERVED_SPACE             16384	/* This value needs to be equal to that in uboot */
+
 
 #define VERSION_LEN		256
 #define VERSION_TIMESTAMP_LEN	4
