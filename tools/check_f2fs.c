@@ -32,7 +32,7 @@
 int buf[BLOCKS];
 char cmd[BLOCK];
 
-static int run(char *cmd)
+static int run(const char *cmd)
 {
 	int status;
 
@@ -42,7 +42,10 @@ static int run(char *cmd)
 	case 0:
 		/* redirect stderr to stdout */
 		dup2(1, 2);
-		execl("/system/bin/sh", "sh", "-c", cmd, (char *) 0);
+		execl("/system/bin/sh", "sh", "-c", cmd, (char *) NULL);
+	case -1:
+		printf("fork failed in run() errno:%d\n", errno);
+		return -1;
 	default:
 		wait(&status);
 	}
@@ -72,7 +75,13 @@ static int test_atomic_write(char *path)
 		return -1;
 	}
 	printf("\tCheck : Atomic in-memory count: 2\n");
-	run("cat /sys/kernel/debug/f2fs/status | grep \"atomic IO\"");
+	if (access("/dev/sys/fs/by-name/userdata/current_atomic_write", F_OK)
+			== 0) {
+		printf("- inmem: ");
+		run("cat /dev/sys/fs/by-name/userdata/current_atomic_write");
+	} else {
+		run("grep \"atomic IO\" /sys/kernel/debug/f2fs/status");
+	}
 
 	printf("\tCommit  ... \n");
 	ret = ioctl(db, F2FS_IOC_COMMIT_ATOMIC_WRITE);
