@@ -50,7 +50,7 @@ enum SB_ADDR {
 	SB_MAX_ADDR,
 };
 
-#define SB_MASK(i)	(1 << i)
+#define SB_MASK(i)	(1 << (i))
 #define SB_MASK_ALL	(SB_MASK(SB0_ADDR) | SB_MASK(SB1_ADDR))
 
 /* fsck.c */
@@ -237,6 +237,8 @@ extern void update_data_blkaddr(struct f2fs_sb_info *, nid_t, u16, block_t);
 extern void update_nat_blkaddr(struct f2fs_sb_info *, nid_t, nid_t, block_t);
 
 extern void print_raw_sb_info(struct f2fs_super_block *);
+extern bool is_checkpoint_stop(struct f2fs_super_block *, bool);
+extern bool is_inconsistent_error(struct f2fs_super_block *);
 extern pgoff_t current_nat_addr(struct f2fs_sb_info *, nid_t, int *);
 
 extern u32 get_free_segments(struct f2fs_sb_info *);
