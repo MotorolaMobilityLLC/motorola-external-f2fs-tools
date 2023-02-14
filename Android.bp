@@ -319,16 +319,6 @@ cc_binary {
 }
 
 cc_binary {
-    name: "f2fsstat",
-    defaults: [
-        "tools-defaults",
-    ],
-    srcs: [
-        "tools/f2fstat.c",
-    ],
-}
-
-cc_binary {
     name: "f2fs.fibmap",
     defaults: [
         "tools-defaults",
