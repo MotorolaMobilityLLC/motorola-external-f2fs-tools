@@ -26,10 +26,12 @@
 #define DB2_PATH "/mnt/androidwritable/0/emulated/0/Android/data/database_file2"
 #define FILE_PATH "/data/testfile"
 
+#define F2FS_BLKSIZE 4096
+#define BLKS_TO_SECTOR_BITS 3
 #define BLOCK 4096
 #define BLOCKS (2 * BLOCK)
 
-int buf[BLOCKS];
+char buf[BLOCKS];
 char cmd[BLOCK];
 
 static int run(const char *cmd)
@@ -97,6 +99,7 @@ static int test_bad_write_call(char *path)
 	int fd, written;
 	struct stat sb;
 	int large_size = 1024 * 1024 * 100;	/* 100 MB */
+	int blocks;
 
 	printf("\tOpen  %s... \n", path);
 	fd = open(path, O_RDWR|O_CREAT|O_TRUNC, 0666);
@@ -123,7 +126,11 @@ static int test_bad_write_call(char *path)
 		return -1;
 	}
 
-	if ((long long)sb.st_size / 512 != (long long)sb.st_blocks) {
+	blocks = (long long)sb.st_size / F2FS_BLKSIZE;
+	if (sb.st_size % F2FS_BLKSIZE)
+		blocks++;
+
+	if (blocks << BLKS_TO_SECTOR_BITS != (long long)sb.st_blocks) {
 		printf("FAIL: Mismatch i_size and i_blocks: %lld %lld\n",
 			(long long)sb.st_size, (long long)sb.st_blocks);
 		printf("FAIL: missing patch "
